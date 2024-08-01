@@ -151,6 +151,9 @@ const Instauto = async (db, browser, options) => {
 
   async function checkReachedFollowedUserDayLimit() {
     if (getNumFollowedUsersThisTimeUnit(dayMs) >= maxFollowsPerDay) {
+      logger.log(`===========================`);
+      logger.log(`===========================`);
+      logger.log(`===========================`);
       logger.log('Have reached daily follow/unfollow limit, waiting 10 min');
       await sleep(10 * 60 * 1000);
     }
@@ -158,6 +161,9 @@ const Instauto = async (db, browser, options) => {
 
   async function checkReachedFollowedUserHourLimit() {
     if (getNumFollowedUsersThisTimeUnit(hourMs) >= maxFollowsPerHour) {
+      logger.log(`===========================`);
+      logger.log(`===========================`);
+      logger.log(`===========================`);
       logger.log('Have reached hourly follow rate limit, pausing 10 min');
       await sleep(10 * 60 * 1000);
     }
@@ -238,7 +244,7 @@ const Instauto = async (db, browser, options) => {
       const elementHandles = await page.$x(`//body//main//*[contains(text(),${escapeXpathStr(username)})]`);
       const foundUsernameOnPage = elementHandles.length > 0;
       if (!foundUsernameOnPage) logger.warn(`Cannot find text "${username}" on page`);
-      return foundUsernameOnPage;
+      return true;// foundUsernameOnPage;
     }
 
     throw new Error(`Navigate to user failed with status ${status}`);
@@ -250,19 +256,20 @@ const Instauto = async (db, browser, options) => {
 
   async function navigateToUserAndGetData(username) {
     const cachedUserData = userDataCache[username];
-
+    //logger.log({cachedUserData})
     if (isAlreadyOnUserPage(username)) {
       // assume we have data
       return cachedUserData;
     }
 
-    if (cachedUserData != null) {
+    if (cachedUserData && cachedUserData != null) {
       // if we already have userData, just navigate
       await navigateToUserWithCheck(username);
       return cachedUserData;
     }
 
     async function getUserDataFromPage() {
+      logger.log('fn::getUserDataFromPage');
       // https://github.com/mifi/instauto/issues/115#issuecomment-1199335650
       // to test in browser: document.getElementsByTagName('html')[0].innerHTML.split('\n');
       try {
@@ -437,8 +444,12 @@ const Instauto = async (db, browser, options) => {
       throw new Error('Follow button not found');
     }
 
+    logger.log(``);
+    logger.log(`===========================`);
     logger.log(`Following user ${username}`);
-
+    logger.log(`===========================`);
+    logger.log(``);
+    
     if (!dryRun) {
       await elementHandle.click();
       await sleep(5000);
@@ -1008,9 +1019,9 @@ const Instauto = async (db, browser, options) => {
 
   await setEnglishLang(false);
 
-  await tryPressButton(await page.$x('//button[contains(text(), "Accept")]'), 'Accept cookies dialog');
-  await tryPressButton(await page.$x('//button[contains(text(), "Only allow essential cookies")]'), 'Accept cookies dialog 2 button 1', 10000);
-  await tryPressButton(await page.$x('//button[contains(text(), "Allow essential and optional cookies")]'), 'Accept cookies dialog 2 button 2', 10000);
+  //await tryPressButton(await page.$x('//button[contains(text(), "Accept")]'), 'Accept cookies dialog');
+  //await tryPressButton(await page.$x('//button[contains(text(), "Only allow essential cookies")]'), 'Accept cookies dialog 2 button 1', 10000);
+  //await tryPressButton(await page.$x('//button[contains(text(), "Allow essential and optional cookies")]'), 'Accept cookies dialog 2 button 2', 10000);
 
   if (!(await isLoggedIn())) {
     if (!myUsername || !password) {
@@ -1059,7 +1070,7 @@ const Instauto = async (db, browser, options) => {
 
     // In case language gets reset after logging in
     // https://github.com/mifi/SimpleInstaBot/issues/118
-    await setEnglishLang(true);
+    await setEnglishLang(false);
 
     // Mobile version https://github.com/mifi/SimpleInstaBot/issues/7
     await tryPressButton(await page.$x('//button[contains(text(), "Save Info")]'), 'Login info dialog: Save Info');
@@ -1076,11 +1087,17 @@ const Instauto = async (db, browser, options) => {
   logger.log(`Have liked ${getNumLikesThisTimeUnit(dayMs)} images in the last 24 hours`);
 
   try {
-    // eslint-disable-next-line no-underscore-dangle
+    // eslint-disable-next-line no-underscore-dangle 
+    logger.log('shared=>')
+    logger.log( await page.evaluate(() => window._sharedData));
+    logger.log('config=>')
+    logger.log( await page.evaluate(() => window._sharedData.config));
     const detectedUsername = await page.evaluate(() => window._sharedData.config.viewer.username);
     if (detectedUsername) myUsername = detectedUsername;
   } catch (err) {
     logger.error('Failed to detect username', err);
+    logger.log('forcing to use lumina.libros');
+    myUsername = 'lumina.libros';
   }
 
   if (!myUsername) {

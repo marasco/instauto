@@ -1,6 +1,6 @@
 'use strict';
 const puppeteer = require('puppeteer'); // eslint-disable-line import/no-extraneous-dependencies
-const Instauto = require('instauto'); // eslint-disable-line import/no-unresolved
+const Instauto = require('.'); // eslint-disable-line import/no-unresolved
 const dotenv = require('dotenv'); // eslint-disable-line import/no-unresolved
 dotenv.config();
 
@@ -28,7 +28,7 @@ const options = {
   shouldLikeMedia: null,
   dontUnfollowUntilTimeElapsed: 3 * 24 * 60 * 60 * 1000, //3 days
   excludeUsers: [],
-  dryRun: true,
+  dryRun: process.env.DRY_RUN === 'true' || false,
   logger,
 };
 
@@ -36,8 +36,9 @@ const options = {
   let browser;
 
   try {
+    console.log('Starting browser')
     browser = await puppeteer.launch({
-      headless: false,
+      headless: process.env.HEADLESS==="true" || false,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -51,19 +52,22 @@ const options = {
     });
 
     const instauto = await Instauto(instautoDb, browser, options);
-
+    log('info', 'Starting instauto');
     const unfollowedCount = await instauto.unfollowOldFollowed({ ageInDays: 7, limit: options.maxFollowsPerDay * (2 / 3) });
-
+    
     if (unfollowedCount > 0) await instauto.sleep(10 * 60 * 1000);
-
+    
     // List of usernames that we should follow the followers of, can be celebrities etc.
     const usersToFollowFollowersOf = process.env.USERS_TO_FOLLOW != null ? process.env.USERS_TO_FOLLOW.split(',') : [];
-
+    
+    log('info', {usersToFollowFollowersOf});
+    log('info', 'maxFollowsPerDay: ', options.maxFollowsPerDay);
+    log('info', {unfollowedCount});
     // Now go through each of these and follow a certain amount of their followers
     await instauto.followUsersFollowers({
       usersToFollowFollowersOf,
       maxFollowsTotal: options.maxFollowsPerDay - unfollowedCount,
-      skipPrivate: true,
+      skipPrivate: false,
       enableLikeImages: false,
       likeImagesMax: 0,
     });
